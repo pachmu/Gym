@@ -66,5 +66,5 @@ toolsandbox_agent:
       #   python resources_servers/toolsandbox/prepare_toolsandbox.py
       - name: test
         type: validation
-        jsonl_fpath: resources_servers/toolsandbox/data/test.jsonl
+        jsonl_fpath: resources_servers/toolsandbox/data/test_toolsandbox.jsonl
         license: CC-BY-NC-4.0 (apple/ToolSandbox scenarios)

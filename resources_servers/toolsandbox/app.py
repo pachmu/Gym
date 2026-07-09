@@ -311,13 +311,12 @@ class ToolSandboxResourcesServer(SimpleResourcesServer):
             obs.append(NeMoGymEasyInputMessage(role=role, content=row["content"]))
         return obs
 
-    @staticmethod
-    def _seed_tools(ctx: ExecutionContext) -> List[FunctionToolParam]:
+    def _seed_tools(self, ctx: ExecutionContext) -> List[FunctionToolParam]:
         tools: List[FunctionToolParam] = []
         for spec in convert_to_openai_tools(_agent_visible_tools(ctx)):
             fn = spec["function"]
             params = fn.get("parameters") or {"type": "object", "properties": {}}
-            if isinstance(params, dict):
+            if isinstance(params, dict) and not self.config.tool_schema_additional_properties:
                 params.setdefault("additionalProperties", False)
             tools.append(
                 FunctionToolParam(
