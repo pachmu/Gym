@@ -2,12 +2,6 @@
 # the base nemo-gym install. They are installed only when this server's venv is
 # built (ng_run / ng_test create a per-server .venv from this file), so nothing
 # here leaks into gym/pyproject.toml.
-#
-# NOTE: scipy is intentionally NOT listed. Upstream used
-# scipy.optimize.linear_sum_assignment for milestone scoring, but scipy is in
-# nemo-gym's [tool.uv] exclude-dependencies and uv strips it from any install
-# under the gym tree — so it is replaced by a vendored, dependency-free solver
-# (tool_sandbox/common/_linear_assignment.py, validated bit-identical to scipy).
 -e nemo-gym[dev] @ ../../
 
 # Vendored apple/ToolSandbox core (see tool_sandbox/): sandbox state,

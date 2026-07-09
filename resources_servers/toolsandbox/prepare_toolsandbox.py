@@ -22,7 +22,7 @@ human readability; the server ignores everything but ``task_idx``.
 Usage:
 
     python resources_servers/toolsandbox/prepare_toolsandbox.py \
-        --output resources_servers/toolsandbox/data/test.jsonl
+        --output resources_servers/toolsandbox/data/test_tolsandbox.jsonl
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(_HERE) / "data" / "test.jsonl",
+        default=Path(_HERE) / "data" / "test_toolsandbox.jsonl",
         help="Output JSONL path.",
     )
     parser.add_argument(

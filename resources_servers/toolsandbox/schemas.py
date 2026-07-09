@@ -78,6 +78,13 @@ class ToolSandboxResourcesServerConfig(BaseResourcesServerConfig):
     # Use the small smoke-test scenario subset instead of the full set.
     test_mode: bool = False
 
+    # Controls ``additionalProperties`` in seeded tool JSON schemas.
+    #   True  (default) => leave it unset — matches upstream ToolSandbox, which
+    #                      sends bare Chat-Completions tool schemas.
+    #   False           => inject ``additionalProperties: False`` (a strict
+    #                      Responses-API convention upstream never sends).
+    tool_schema_additional_properties: bool = True
+
 
 class ToolSandboxSeedSessionRequest(BaseSeedSessionRequest):
     task_idx: int

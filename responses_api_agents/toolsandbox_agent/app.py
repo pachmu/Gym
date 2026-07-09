@@ -14,7 +14,7 @@
 # limitations under the License.
 """Agent harness for the ToolSandbox resources server.
 
-A thin fork of ``aviary_agent``. The difference: ToolSandbox is a
+The difference: ToolSandbox is a
 conversation, not a pure tool loop. When the model replies in natural language
 (no tool calls) that reply must go to the **user simulator** and the episode
 continues — so this harness forwards the *whole* model output (assistant text

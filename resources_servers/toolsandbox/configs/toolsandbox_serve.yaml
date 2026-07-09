@@ -23,9 +23,14 @@ toolsandbox:
       verified: false
       description: ToolSandbox multi-turn tool-use benchmark; reward is the milestone similarity in [0, 1] (0 if a minefield is hit).
       value: Improve stateful, multi-turn tool-calling and user-interaction capability.
-      # User simulator defaults to the model under test. For less self-play bias
-      # point this at a dedicated user-sim model server declared in the loaded
-      # model config (and set user_model_name to its served model).
+      # User simulator defaults to the model under test (self-play). To use a
+      # DIFFERENT user-sim model, also load
+      # `resources_servers/toolsandbox/configs/user_model.yaml` and override
+      # this ref to point at the `user_model` instance, e.g.:
+      #   ++toolsandbox.resources_servers.toolsandbox.user_model_server.name=user_model
+      #   +user_base_url=... +user_api_key=... +user_model_name=...
+      # (The openai_model server ignores per-request model overrides, so a
+      # distinct user model needs its own server instance — see user_model.yaml.)
       user_model_server:
         type: responses_api_models
         name: policy_model
@@ -42,6 +47,10 @@ toolsandbox:
 #      user_enable_thinking: false     # no-op for gpt-4o (OpenAI ignores chat_template_kwargs); set only for vLLM reasoning models
       preferred_tool_backend: default
       test_mode: false
+      # `additionalProperties` in seeded tool schemas. True (default) leaves it
+      # unset = matches upstream's bare Chat-Completions schemas; false injects
+      # `additionalProperties: False`.
+      tool_schema_additional_properties: true
 
 toolsandbox_agent:
   responses_api_agents:
