@@ -24,7 +24,6 @@ exercised without any live server.
 from typing import Any, Callable
 from unittest.mock import AsyncMock, MagicMock
 
-from pytest import fixture, mark, raises
 from tenacity import RetryError, wait_none
 
 from nemo_gym.config_types import ModelServerRef, ResourcesServerRef
@@ -34,6 +33,7 @@ from nemo_gym.openai_utils import (
     NeMoGymResponseOutputMessage,
 )
 from nemo_gym.server_utils import ServerClient
+from pytest import fixture, mark, raises
 from responses_api_agents.toolsandbox_agent.app import (
     ToolSandboxAgent,
     ToolSandboxAgentConfig,
@@ -78,9 +78,7 @@ def _seed_payload(obs: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         "env_id": "env-1",
         "scenario": "scenario-a",
         "obs": [{"role": "user", "content": "You are in a sandbox."}] if obs is None else obs,
-        "tools": [
-            {"name": "get_time", "parameters": None, "strict": None, "type": "function", "description": None}
-        ],
+        "tools": [{"name": "get_time", "parameters": None, "strict": None, "type": "function", "description": None}],
     }
 
 
@@ -105,9 +103,7 @@ def _text_response(text: str, response_id: str = "resp-text") -> dict[str, Any]:
     }
 
 
-def _function_call_response(
-    name: str = "get_time", arguments: str = "{}", call_id: str = "call-1"
-) -> dict[str, Any]:
+def _function_call_response(name: str = "get_time", arguments: str = "{}", call_id: str = "call-1") -> dict[str, Any]:
     return {
         "id": "resp-fn",
         "created_at": 1,
@@ -383,9 +379,12 @@ class TestApp:
             await agent.run(self._run_request())
 
 
-@mark.parametrize("build", [_text_response, _function_call_response])
-def test_response_builders_are_valid(build: Callable[[], dict[str, Any]]) -> None:
-    # Guard the fixtures themselves: the canned payloads must parse as responses.
+@mark.parametrize(
+    "payload",
+    [_text_response("hi"), _function_call_response(), _empty_response()],
+)
+def test_response_builders_are_valid(payload: dict[str, Any]) -> None:
+    # Guard the canned fixtures themselves: each must parse as a model response.
     from nemo_gym.openai_utils import NeMoGymResponse
 
-    NeMoGymResponse.model_validate(build())
+    NeMoGymResponse.model_validate(payload)
