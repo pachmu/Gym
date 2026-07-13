@@ -59,16 +59,42 @@ self-grading bias.
 
 ```bash
 # Reference metrics
-ng_run "+config_paths=[resources_servers/rolemrc/configs/rolemrc.yaml,responses_api_models/vllm_model/configs/vllm_model.yaml]"
+gym env start --resources-server rolemrc --model-type vllm_model
 
 # LLM-as-judge
-ng_run "+config_paths=[resources_servers/rolemrc/configs/rolemrc_judge.yaml,responses_api_models/vllm_model/configs/vllm_model.yaml]"
+gym env start --resources-server rolemrc/rolemrc_judge --model-type vllm_model
+```
+
+## Example rollouts and metrics
+
+`data/example_rollouts.jsonl` and `data/example_metrics.json` are committed
+and can be regenerated at any time with the scripts below (no servers needed):
+
+```bash
+# Regenerate synthetic rollouts (ROUGE/BLEU/METEOR scored, no model call)
+python resources_servers/rolemrc/generate_example_rollouts.py
+
+# Aggregate rollouts -> per-dimension metrics summary
+python resources_servers/rolemrc/generate_example_metrics.py
+
+# Inspect
+tail -n 1 resources_servers/rolemrc/data/example_rollouts.jsonl | jq .reward
+cat resources_servers/rolemrc/data/example_metrics.json | jq .
+```
+
+To collect rollouts from a live model instead:
+
+```bash
+gym eval run --no-serve \
+    --agent rolemrc_simple_agent \
+    --input resources_servers/rolemrc/data/example.jsonl \
+    --output resources_servers/rolemrc/data/example_rollouts.jsonl
+
+tail -n 1 resources_servers/rolemrc/data/example_rollouts.jsonl | jq | less
 ```
 
 ## Test
 
 ```bash
-ng_test +entrypoint=resources_servers/rolemrc
-# or, in the repo dev env:
-ng_dev_test +entrypoint=resources_servers/rolemrc
+gym env test --resources-server rolemrc
 ```

@@ -462,6 +462,13 @@ class RoleMRCResourcesServer(SimpleResourcesServer):
                 )
             mc = self.config.judge_endpoint_max_concurrency
             self._judge_semaphore = nullcontext() if mc is None else asyncio.Semaphore(mc)
+        else:
+            # Pre-load CPU scorers off the request path (one-time startup cost
+            # instead of blocking — and racing on — the first verify call).
+            _rouge_scorer()
+            _ensure_nltk_data()
+            if self.config.include_bertscore:
+                _bert_scorer()
 
     def setup_webserver(self) -> FastAPI:
         return super().setup_webserver()
@@ -479,12 +486,10 @@ class RoleMRCResourcesServer(SimpleResourcesServer):
         task = body.task or ""
         dimension = body.dimension or _task_dimension(task)
 
-        metrics: Dict[str, float] = {}
-        metrics.update(_compute_rouge(response, reference))
-        metrics["bleu"] = _compute_bleu(response, reference)
-        metrics["meteor"] = _compute_meteor(response, reference)
-        if self.config.include_bertscore:
-            metrics.update(_compute_bertscore(response, reference))
+        # ROUGE/BLEU/METEOR/BERTScore are CPU-bound (BERTScore is a roberta-large
+        # forward pass). Run in a worker thread so verify() doesn't block the
+        # event loop and concurrent rollouts can overlap.
+        metrics = await asyncio.to_thread(self._score_reference, response, reference)
 
         rouge_l = float(metrics.get("rougeL", 0.0))
         data = body.model_dump()
@@ -495,6 +500,16 @@ class RoleMRCResourcesServer(SimpleResourcesServer):
             generation=response[:500],
             **metrics,
         )
+
+    def _score_reference(self, response: str, reference: str) -> Dict[str, float]:
+        """Synchronous, CPU-bound reference metrics — called via asyncio.to_thread."""
+        metrics: Dict[str, float] = {}
+        metrics.update(_compute_rouge(response, reference))
+        metrics["bleu"] = _compute_bleu(response, reference)
+        metrics["meteor"] = _compute_meteor(response, reference)
+        if self.config.include_bertscore:
+            metrics.update(_compute_bertscore(response, reference))
+        return metrics
 
     # --- LLM-as-judge scoring --------------------------------------------
 
