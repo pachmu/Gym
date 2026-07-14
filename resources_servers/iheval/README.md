@@ -8,8 +8,13 @@ including multi-turn rule-following and the reference cross-row concatenation.
 
 ## Tasks
 
-Every row carries its task in `verifier_metadata.task`, which selects the
-scorer in `verify()`:
+Every row carries its `task` (and `domain`, `setting`, `instruction`, `answer`)
+as **row top-level scalar fields** — not nested under `verifier_metadata` — so
+they survive the nemo-evaluator `gym://...protocol=native` driver, which
+forwards a row's top-level scalar fields but drops nested objects. The gold
+`answer` (a dict/list for safety, rule-following and get-webpage) is therefore
+**JSON-encoded to a string** so it too survives; `verify()` JSON-decodes it
+(`_decode_answer`). `task` selects the scorer in `verify()`:
 
 | `task` | Domain | Scorer | Reward |
 |--------|--------|--------|--------|

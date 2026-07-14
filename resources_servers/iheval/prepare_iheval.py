@@ -25,7 +25,10 @@ Each row becomes a Gym task. The prompt (system + user instruction) goes into
 ``responses_create_params.input``; tool-use tasks additionally carry the
 function schema in ``responses_create_params.tools`` and the canned tool-call
 trajectory as ``function_call`` / ``function_call_output`` input items. The
-gold answer and routing metadata travel in ``verifier_metadata``.
+gold answer and routing metadata (``task``, ``domain``, ``setting``,
+``instruction``, ``answer``) travel as row top-level fields so they survive the
+nemo-evaluator ``gym://...protocol=native`` driver, which forwards a row's
+top-level fields onto ``/verify`` but drops any nested ``verifier_metadata``.
 
 Source: on first run the upstream repo is downloaded as a zip into
 ``$XDG_CACHE_HOME/byob_iheval`` (or ``~/.cache/byob_iheval``). Set
@@ -216,16 +219,22 @@ def _to_task(row: Dict[str, Any], domain: str, task: str) -> Dict[str, Any]:
         messages.extend(_tool_trajectory(tool))
         params["tools"] = [_tool_schema(tool.get("definition", {}))]
 
+    # Routing/gold fields live at the ROW TOP LEVEL (not nested under a
+    # ``verifier_metadata`` object), mirroring the rolemrc / ragtruth servers.
+    # The nemo-evaluator ``gym://...protocol=native`` driver forwards a row's
+    # top-level SCALAR fields onto the ``/verify`` request but drops nested
+    # objects — so ``answer`` (a dict/list for safety, rule-following and
+    # get-webpage) must be JSON-ENCODED to a string to survive, matching the
+    # legacy byob port's ``json.dumps(answer)``. verify() json-decodes it. See
+    # app.py ``IHEvalRunRequest`` / ``_decode_answer``.
     return {
         "responses_create_params": params,
-        "verifier_metadata": {
-            "id": row.get("id"),
-            "task": task,
-            "domain": domain,
-            "setting": row.get("_setting", ""),
-            "instruction": instruction,
-            "answer": row.get("answer"),
-        },
+        "id": row.get("id"),
+        "task": task,
+        "domain": domain,
+        "setting": row.get("_setting", ""),
+        "instruction": instruction,
+        "answer": json.dumps(row.get("answer"), ensure_ascii=False),
         "agent_ref": {"type": "responses_api_agents", "name": _AGENT},
     }
 
