@@ -24,11 +24,10 @@ writes:
 Each row becomes a Gym task. The prompt (system + user instruction) goes into
 ``responses_create_params.input``; tool-use tasks additionally carry the
 function schema in ``responses_create_params.tools`` and the canned tool-call
-trajectory as ``function_call`` / ``function_call_output`` input items. The
-gold answer and routing metadata (``task``, ``domain``, ``setting``,
-``instruction``, ``answer``) travel as row top-level fields so they survive the
-nemo-evaluator ``gym://...protocol=native`` driver, which forwards a row's
-top-level fields onto ``/verify`` but drops any nested ``verifier_metadata``.
+trajectory as Responses-API ``function_call`` / ``function_call_output`` input
+items. The nemo-evaluator native driver translates those into the upstream
+chat-completions tool turn at seed time (see ``_tool_trajectory``). The gold
+answer and routing metadata travel in ``verifier_metadata``.
 
 Source: on first run the upstream repo is downloaded as a zip into
 ``$XDG_CACHE_HOME/byob_iheval`` (or ``~/.cache/byob_iheval``). Set
@@ -173,7 +172,16 @@ def _tool_schema(definition: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _tool_trajectory(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Canned ``[function_call, function_call_output]`` Responses-API items."""
+    """Canned ``[function_call, function_call_output]`` Responses-API items.
+
+    The canonical Responses-API encoding (kept here so the gym-native model
+    server, whose input schema has no ``role: "tool"``, accepts the row). The
+    nemo-evaluator ``gym://...protocol=native`` driver's ``messages_from_rcp``
+    translates these typed items into the upstream chat-completions form — an
+    ``assistant`` message with ``tool_calls`` followed by a ``role: "tool"``
+    result whose ``content`` carries the tool output — matching
+    ``run_vllm_model.py::prepare_tool_call``.
+    """
     call = tool.get("call", {}) or {}
     ret = tool.get("return", {}) or {}
     call_id = str(call.get("id") or "call_iheval_0")
