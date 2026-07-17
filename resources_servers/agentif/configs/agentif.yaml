@@ -45,14 +45,15 @@ agentif_simple_agent:
         jsonl_fpath: resources_servers/agentif/data/train.jsonl
         license: Creative Commons Attribution 4.0 International
 
-# Null defaults so OmegaConf resolves ${judge_*} and ${policy_*} without CLI
-# overrides. judge_* must be supplied at runtime (gpt-4o-mini recommended).
-# policy_* are only consumed by agentif_simple_agent; in native-protocol runs
-# (nemo-evaluator gym://) the agent is never invoked, so these stay null.
-# Must stay at end of file for update_env_list.py.
+# Null defaults so OmegaConf resolves ${judge_*} without CLI overrides.
+# Recommended judge: gpt-4o-mini. Must stay at end of file for update_env_list.py.
+#
+# NOTE: policy_* are intentionally NOT defaulted here. openai_model.yaml's
+# SimpleModelServerConfig requires str (not Optional), so a null policy_* would
+# crash the policy_model server at startup. agentif.yaml is only co-loaded with
+# openai_model.yaml for evaluator/rollout runs (ng_collect_rollouts), which
+# always supply real +policy_* values. Native-protocol runs use agentif_serve.yaml
+# (no policy_model), so there is nothing to default.
 judge_base_url: null
 judge_api_key: null
 judge_model_name: null
-policy_base_url: null
-policy_api_key: null
-policy_model_name: null
