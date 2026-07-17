@@ -17,8 +17,23 @@ upstream ``ytyz1307zzh/IHEval`` raw ``input_data.json`` files.
 
 Writes:
 
-* ``data/test.jsonl``    — all rows across all tasks.
-* ``data/example.jsonl`` — a small mixed sample for smoke testing (committed).
+* ``data/test.jsonl``          — all rows across all tasks.
+* ``data/test_conflict.jsonl`` — only the ``conflict/*`` setting rows.
+* ``data/example.jsonl``       — a small mixed sample for smoke testing (committed).
+
+Why a conflict-only dataset
+---------------------------
+The nemo-evaluator (``nel``) driver "owns the loop": its headline metric is a
+plain per-row ``mean_reward`` over the whole dataset — it never calls the Gym
+server's ``compute_metrics``/``get_key_metrics``, so the aggregate conflict
+``result_score`` that ``app.py`` computes does not surface in a ``nel eval run``.
+IHEval's headline is the **conflict** setting (instruction hierarchy is what the
+conflict setting stresses), so ``test_conflict.jsonl`` restricts the dataset to
+the ``conflict/*`` rows; NEL's per-row ``mean_reward`` over that file IS the
+average conflict score. (Row counts differ across tasks, so this is a per-row
+mean, not the task-macro average of upstream ``average_final_score.py`` — that
+exact number still comes from the gym-native ``compute_metrics`` path over the
+full ``test.jsonl``.)
 
 Why Chat-Completions shape
 --------------------------
@@ -281,6 +296,11 @@ def _to_task(row: Dict[str, Any], domain: str, task: str) -> Dict[str, Any]:
     }
 
 
+def _setting_category(setting: str) -> str:
+    """``conflict/foo`` -> ``conflict`` (aligned / conflict / reference)."""
+    return setting.split("/", 1)[0] if setting else "unknown"
+
+
 def _write_jsonl(path: Path, rows: List[Dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
@@ -311,6 +331,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     _write_jsonl(_DATA_DIR / "example.jsonl", example_rows)
     if not args.example_only:
         _write_jsonl(_DATA_DIR / "test.jsonl", all_rows)
+        # Conflict-only subset: NEL's per-row mean_reward over this file is the
+        # average conflict score (see module docstring).
+        conflict_rows = [t for t in all_rows if _setting_category(t["setting"]) == "conflict"]
+        _write_jsonl(_DATA_DIR / "test_conflict.jsonl", conflict_rows)
     print(f"IHEval: {n_tool_rows} rows carry a tool turn")
 
 

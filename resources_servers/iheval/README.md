@@ -45,13 +45,17 @@ prompt-injection *conflict* setting).
 ## Data
 
 ```bash
-# Downloads github.com/ytyz1307zzh/IHEval and writes data/test.jsonl +
-# data/example.jsonl. Set IHEVAL_REPO_DIR to use an existing checkout.
+# Downloads github.com/ytyz1307zzh/IHEval and writes data/test.jsonl,
+# data/test_conflict.jsonl + data/example.jsonl. Set IHEVAL_REPO_DIR to use an
+# existing checkout.
 python resources_servers/iheval/prepare_iheval.py
 ```
 
 `data/example.jsonl` (5 mixed rows) is committed for smoke testing;
-`data/test.jsonl` (~15k rows across all eight tasks) is generated locally.
+`data/test.jsonl` (~19k rows across all eight tasks) and
+`data/test_conflict.jsonl` (the `conflict/*` subset) are generated locally.
+The conflict-only file exists so a per-row-mean driver (nemo-evaluator) reports
+the average conflict score directly — see **Result score** below.
 
 ## Multi-turn rule-following
 
@@ -116,9 +120,16 @@ Also reported: `aligned_score`, `reference_score`, the per-task
 
 > Caveat: these aggregates come from the **gym-native** metrics path (`gym eval`
 > / `ng_reward_profile` / `/compute_metrics`). A driver that only means per-row
-> rewards over the whole dataset reports a flat all-settings mean, not the
-> conflict result score — filter the dataset to conflict rows if you need the
-> conflict number from a per-row-mean driver.
+> rewards over the whole dataset (nemo-evaluator `nel eval run`) reports a flat
+> all-settings mean, not the conflict result score.
+>
+> **nemo-evaluator runs use `data/test_conflict.jsonl`** (the `conflict/*` subset
+> that `prepare_iheval.py` emits) so NEL's headline `mean_reward` **is** the
+> average conflict score. Note this is a *per-row* mean over conflict rows — row
+> counts differ across tasks, so it is not the task-macro average of upstream
+> `average_final_score.py`; that exact number comes from the gym-native
+> `compute_metrics` path over the full `test.jsonl`. See
+> `gym-nel-configs/iheval_{local,slurm}.yaml`.
 
 `compute_metrics` also reports `mean_reward` plus per-`task`, per-`domain`, and
 per-`setting` breakdowns for inspection.
