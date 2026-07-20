@@ -63,10 +63,6 @@ the native driver, which forwards top-level scalars but drops nested objects;
 ``answer`` is JSON-encoded and ``verify()`` JSON-decodes it (see app.py
 ``_decode_answer``).
 
-Source: set ``IHEVAL_REPO_DIR`` to a local checkout (defaults to the in-repo
-``benchmarks/iheval/IHEval`` if present); otherwise the upstream repo is
-downloaded as a zip into ``$XDG_CACHE_HOME/byob_iheval`` (or ``~/.cache``).
-
 Usage::
 
     python resources_servers/iheval/prepare_iheval.py
@@ -93,9 +89,6 @@ _ZIP_TOP_DIR = "IHEval-main"
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _AGENT = "iheval_simple_agent"
-
-# In-repo checkout of the upstream benchmark, used when IHEVAL_REPO_DIR is unset.
-_LOCAL_REPO = Path(__file__).resolve().parents[3] / "benchmarks" / "iheval" / "IHEval"
 
 # (domain, task) pairs. ``task`` doubles as the verifier's scorer key.
 # ``multi-turn`` rule-following is included: its ``conversation_history`` is
@@ -130,7 +123,7 @@ _EXAMPLE_PER_TASK = {
 
 def _cache_dir() -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    cache = Path(base) / "byob_iheval"
+    cache = Path(base) / "iheval"
     cache.mkdir(parents=True, exist_ok=True)
     return cache
 
@@ -142,9 +135,6 @@ def _repo_root() -> Path:
         if not (root / "benchmark").is_dir():
             raise FileNotFoundError(f"IHEVAL_REPO_DIR missing 'benchmark/': {root}")
         return root
-
-    if (_LOCAL_REPO / "benchmark").is_dir():
-        return _LOCAL_REPO.resolve()
 
     cache = _cache_dir()
     target = cache / _ZIP_TOP_DIR

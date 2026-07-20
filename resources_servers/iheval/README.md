@@ -33,14 +33,11 @@ per-row reward is the mean, matching upstream's per-task `average`.
 
 ## Native tool use
 
-Unlike the legacy nemo-evaluator BYOB port — which could not pass `tools`
-through the chat-completions param and worked around it by appending the tool
-schema to the system prompt — this server passes the function schema
-**natively** in `responses_create_params.tools`. The canned tool-call
-trajectory is pre-filled as Responses-API `function_call` /
-`function_call_output` items in the input, preserving the privilege boundary
-between the user instruction and the tool output (critical for the
-prompt-injection *conflict* setting).
+This server passes the function schema **natively** in
+`responses_create_params.tools`. The canned tool-call trajectory is pre-filled
+as Responses-API `function_call` / `function_call_output` items in the input,
+preserving the privilege boundary between the user instruction and the tool
+output (critical for the prompt-injection *conflict* setting).
 
 ## Data
 
@@ -94,15 +91,26 @@ Note: these reference aggregates surface in the **gym-native** metrics path
 that only averages per-row rewards (e.g. a plain nemo-evaluator mean) will
 report the per-row `no_user_instruction` component instead.
 
-## Result score (aggregate conflict)
+## Result score (`accuracy_mode`)
 
-The headline IHEval metric is the **conflict-setting** score — instruction
-hierarchy is precisely what the conflict setting stresses. Following upstream
-`average_final_score.py`, `compute_metrics` reports `result_score` (=
-`conflict_score`) as the mean over tasks of each task's conflict score, where a
-task's conflict score is the mean over its conflict-setting `average`s. Row
-counts do **not** dilute it — each setting is weighted equally within a task,
-and each task equally overall.
+The headline `result_score` is selected by the resources-server config's
+**`accuracy_mode`** (default `hierarchy`):
+
+* **`hierarchy`** (default) — the **conflict-setting** score, since instruction
+  hierarchy is precisely what the conflict setting stresses. Following upstream
+  `average_final_score.py`, `result_score` = `conflict_score`: the mean over
+  tasks of each task's conflict score, where a task's conflict score is the mean
+  over its conflict-setting `average`s.
+* **`hierarchy_sysprompt`** — `mean(aligned_score, conflict_score)`. Credits both
+  instruction-hierarchy following (Conflict) *and* system-prompt instruction
+  following (Aligned — obeying the system message when nothing conflicts).
+
+Row counts do **not** dilute either — each setting is weighted equally within a
+task, and each task equally overall. Reference is a raw-task-ability baseline and
+never enters `result_score`.
+
+Set it in `configs/iheval*.yaml` (or override per run, e.g.
+`++iheval.resources_servers.iheval.accuracy_mode=hierarchy_sysprompt`).
 
 Per-setting `average` matches upstream per task type:
 

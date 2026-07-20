@@ -717,6 +717,29 @@ class TestCategoryAggregation:
         assert m["conflict_score"] == approx(0.575)
         assert m["result_score"] == approx(0.575)
 
+    def test_accuracy_mode_default_is_hierarchy(self) -> None:
+        assert _config().accuracy_mode == "hierarchy"
+
+    def test_hierarchy_sysprompt_averages_aligned_and_conflict(self) -> None:
+        # aligned_score = mean over tasks of aligned setting avgs; conflict_score
+        # likewise. hierarchy_sysprompt result = mean(aligned_score, conflict_score),
+        # NOT the conflict-only headline.
+        config = IHEvalResourcesServerConfig(
+            host="0.0.0.0", port=8080, entrypoint="", name="iheval",
+            accuracy_mode="hierarchy_sysprompt",
+        )
+        server = IHEvalResourcesServer(config=config, server_client=MagicMock(spec=ServerClient))
+        rows = [
+            {"task": "slack-user", "setting": "conflict/x", "reward": 0.4},
+            {"task": "slack-user", "setting": "conflict/x", "reward": 0.6},  # conflict avg 0.5
+            {"task": "slack-user", "setting": "aligned/x", "reward": 0.8},
+            {"task": "slack-user", "setting": "aligned/x", "reward": 1.0},  # aligned avg 0.9
+        ]
+        m = server.compute_metrics([[r] for r in rows])
+        assert m["conflict_score"] == approx(0.5)
+        assert m["aligned_score"] == approx(0.9)
+        assert m["result_score"] == approx(0.7)  # mean(0.9, 0.5)
+
     def test_rule_following_setting_avg_is_instruction_weighted(self) -> None:
         # Row A: 1 instruction, followed. Row B: 3 instructions, 1 followed.
         # instruction_strict = (1 + 1) / (1 + 3) = 0.5 (NOT the row-mean 0.667).
