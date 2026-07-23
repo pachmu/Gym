@@ -6,6 +6,64 @@ system / user / tool instructions across *aligned*, *conflict*, and *reference*
 settings. This server ports **all** IHEval tasks and settings to NeMo Gym —
 including multi-turn rule-following and the reference cross-row concatenation.
 
+## Differences from the original benchmark (and what they mean for you)
+
+The **per-row scoring is identical** to the original — the same rule-based
+checkers produce the same reward for each example. The differences are all about
+**how those rewards are aggregated** and **how the eval is driven**. Read this
+before comparing a gym number to a published IHEval number.
+
+1. **Aggregation: task-macro vs. flat per-row mean.**
+   The original headline is a *task-macro*: it averages rows within each
+   (task, setting) group, then averages those group scores across a task's
+   settings, then averages across tasks — so **every task and setting is weighted
+   equally regardless of how many rows it has**. The gym-native metrics path
+   reproduces this exactly. A driver that simply averages the reward column
+   instead produces a **flat per-row mean**, where every row counts equally and
+   larger tasks/settings dominate.
+   - *What it means:* the two numbers agree only when row counts are balanced
+     across groups. They can diverge on the full mixed dataset. For the **exact**
+     upstream number, use the gym-native metrics path (`compute_metrics`); a flat
+     per-row mean is a close *approximation*, not the same statistic.
+
+2. **The headline is the conflict score.** The original reports separate
+   reference / aligned / conflict columns; gym's single `result_score` is the
+   **conflict** score (in the default `hierarchy` mode), because instruction
+   hierarchy is what the conflict setting stresses.
+   - *What it means:* don't compare gym's `result_score` against the original's
+     aligned or reference numbers — match it to the original's **conflict** column.
+   - To make a flat per-row-mean driver report (an approximation of) that conflict
+     score directly, run it over the **conflict-only** dataset
+     (`data/test_conflict.jsonl`) rather than the full mixed dataset. Because the
+     conflict subset is roughly task-balanced, the flat mean lands within a small
+     fraction of a point of the exact conflict task-macro.
+
+3. **The "reference" setting is inherently cross-row.** The original derives
+   reference scores by concatenating each row's prediction with *other* rows'
+   predictions and re-scoring — something a single per-row verifier cannot see.
+   The exact reference numbers are therefore reconstructed only in the gym-native
+   metrics path; a per-row reward for a reference row is just its standalone
+   component.
+   - *What it means:* trust the reference aggregates only from the gym-native
+     path; a plain per-row-mean driver does not reproduce them.
+
+4. **Multi-turn is a single generation over a pre-canned history**, not a live
+   multi-turn rollout. The prior user turns and fixed assistant replies are
+   built into the input; the model only generates (and is scored on) the final
+   turn, with the same checker as single-turn.
+   - *What it means:* scoring matches upstream, but the model does not itself
+     produce the earlier turns.
+
+5. **Generation and serving parameters are the runner's responsibility.** The
+   benchmark logic is model-agnostic: sampling parameters (temperature, top_p,
+   max_tokens), whether reasoning/thinking is enabled, and the inference backend
+   are all chosen by whoever runs the eval, not fixed by the benchmark.
+   - *What it means:* to reproduce a specific published score you must match those
+     generation settings yourself — differences there (not the scoring) explain
+     most run-to-run gaps.
+
+The sections below give the mechanics behind each point.
+
 ## Tasks
 
 Every row carries its `task` (and `domain`, `setting`, `instruction`, `answer`)
@@ -134,10 +192,10 @@ Also reported: `aligned_score`, `reference_score`, the per-task
 > **nemo-evaluator runs use `data/test_conflict.jsonl`** (the `conflict/*` subset
 > that `prepare_iheval.py` emits) so NEL's headline `mean_reward` **is** the
 > average conflict score. Note this is a *per-row* mean over conflict rows — row
-> counts differ across tasks, so it is not the task-macro average of upstream
-> `average_final_score.py`; that exact number comes from the gym-native
-> `compute_metrics` path over the full `test.jsonl`. See
-> `gym-nel-configs/iheval_{local,slurm}.yaml`.
+> counts differ across tasks, so it is not the exact task-macro average the
+> original benchmark reports; that exact number comes from the gym-native
+> `compute_metrics` path over the full `test.jsonl` (see **Differences from the
+> original benchmark** above).
 
 `compute_metrics` also reports `mean_reward` plus per-`task`, per-`domain`, and
 per-`setting` breakdowns for inspection.
