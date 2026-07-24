@@ -41,6 +41,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+
 BENCHMARK_DIR = Path(__file__).resolve().parent
 GYM_ROOT = BENCHMARK_DIR.parents[1]
 DATA_DIR = BENCHMARK_DIR / "data"
